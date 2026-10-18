@@ -32,6 +32,8 @@ export const RESYNC_NEAR_FACTOR = 25;
 export const RESYNC_CONFIRM_NEAR = 3;
 export const RESYNC_CONFIRM_FAR = 40;
 
+/** タップモードで「直線」とみなすルートの曲がりの許容（弦からのずれ, pt） */
+export const STRAIGHT_TOL = 6;
 /** タップの当たり判定（画面上の px） */
 export const TAP_HIT_PX = 28;
 

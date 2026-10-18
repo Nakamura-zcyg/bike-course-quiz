@@ -15,7 +15,7 @@ import { tapNodes, type Course } from "../data/courses";
 import { evaluateFreehand, LiveTracker } from "../lib/freehand";
 import { dist, sectionAt, sectionEnd, slice, type Pt } from "../lib/geometry";
 import { saveResult, type InputMode, type QuizMode } from "../lib/storage";
-import { evaluateTaps, tapScore } from "../lib/tap";
+import { advanceTo, evaluateTaps, tapScore } from "../lib/tap";
 
 interface Props {
   course: Course;
@@ -150,14 +150,17 @@ export function Quiz({ course, input, mode, tol, onRetry, onReview, onExit }: Pr
       return;
     }
     const step = course.taps[tapIdx];
-    if (id === step.node) {
-      const next = tapIdx + 1;
+    const hit = advanceTo(course.taps, tapIdx, id);
+    if (hit >= 0) {
+      const next = hit + 1;
       setTapIdx(next);
       if (next === course.taps.length) {
         const errors = mistakes.current.map((m) => m > 0);
         finish(tapScore(course.taps, errors), errors, []);
       } else {
-        setMessage({ text: `正解。あと ${course.taps.length - next} か所`, tone: "success" });
+        // 直線で通り抜けるだけの点は飛ばしてよいので、残りは必ずタップする点だけ数える
+        const left = course.taps.slice(next).filter((t) => !t.optional).length;
+        setMessage({ text: `正解。あと ${left} か所`, tone: "success" });
       }
       return;
     }

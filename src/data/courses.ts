@@ -1,5 +1,5 @@
 import { buildRoute, sectionAt, type CourseJson, type Pt, type Route } from "../lib/geometry";
-import type { TapNode, TapStep } from "../lib/tap";
+import { markOptional, type TapNode, type TapStep } from "../lib/tap";
 import kogata from "./kogata.json";
 
 export interface Course {
@@ -31,6 +31,9 @@ export const courses: Course[] = data.courses.map((c) => {
     image: import.meta.env.BASE_URL + c.image,
     originalImage: import.meta.env.BASE_URL + c.originalImage,
     route,
-    taps: c.taps.map((t) => ({ ...t, section: sectionAt(route, Math.max(0, t.s - 1)) })),
+    taps: markOptional(
+      route,
+      c.taps.map((t) => ({ ...t, section: sectionAt(route, Math.max(0, t.s - 1)) })),
+    ),
   };
 });

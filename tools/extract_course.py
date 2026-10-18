@@ -39,6 +39,10 @@ POLE_ABSORB = 36  # ポールからこの距離以内で壁を挟まない曲が
 NODE_MERGE = 24  # ポールのない曲がり角同士をまとめる距離
 POLE_MATCH = 30  # ルートがこの距離以内を（壁を挟まず）通ったら、その候補点を通過したとみなす
 NODE_MATCH = 22
+TASK_LABELS = {1: "クランク", 3: "クランク", 4: "S字"}  # 課題番号（8pt の数字）のうち、中の曲がり角を 1 点にまとめるもの
+TASK_FONT_SIZE = 8.0
+TASK_RADIUS = 60  # 課題の中ほどが課題番号からこの距離以内なら、その課題とみなす
+TASK_GAP = 60  # 課題の中の曲がり角の間隔（ルート上の道のり）。これより離れていれば別の曲がり角
 POLE_CLEAR = 5  # ポールは縁石の先端に立っていることがあるので、ポール中心のまわりの壁は無視する
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -254,6 +258,79 @@ def expected_taps(pts, nodes, walls):
     return steps
 
 
+def task_labels(page):
+    out = []
+    for b in page.get_text("dict")["blocks"]:
+        for line in b.get("lines", []):
+            for s in line["spans"]:
+                t = unicodedata.normalize("NFKC", s["text"]).strip()
+                if t.isdigit() and int(t) in TASK_LABELS and abs(s["size"] - TASK_FONT_SIZE) < 0.2:
+                    x0, y0, x1, y1 = s["bbox"]
+                    out.append({"n": int(t), "kind": TASK_LABELS[int(t)], "p": rnd(((x0 + x1) / 2, (y0 + y1) / 2))})
+    return out
+
+
+def collapse_tasks(routes, nodes, walls, labels):
+    """クランク・S 字の中の曲がり角を、課題の中ほどの 1 点にまとめる（入口と出口は残す）。
+
+    ポールでない候補点が TASK_GAP 以内の間隔で 3 つ以上続く所を課題の通過とみなし、
+    最寄りの課題番号に割り当てる。
+    """
+    runs = {}  # 候補点の並び -> 各ルートでの中ほどの位置
+    for pts in routes:
+        steps = expected_taps(pts, nodes, walls)
+        i = 0
+        while i < len(steps):
+            j = i
+            while (
+                j + 1 < len(steps)
+                and not nodes[steps[j + 1]["node"]]["pole"]
+                and not nodes[steps[i]["node"]]["pole"]
+                and steps[j + 1]["s"] - steps[j]["s"] <= TASK_GAP
+            ):
+                j += 1
+            run = steps[i : j + 1]
+            if len(run) >= 3:
+                key = tuple(st["node"] for st in run)
+                runs.setdefault(key, []).append((point_on(pts, (run[0]["s"] + run[-1]["s"]) / 2), (pts, run)))
+            i = j + 1
+    # 課題ごとにまとめる。どれかのルートで端（入口・出口）になる点は残す
+    by_label = {}
+    for key, entries in runs.items():
+        mids = [m for m, _ in entries]
+        c = (sum(m[0] for m in mids) / len(mids), sum(m[1] for m in mids) / len(mids))
+        lab = min(labels, key=lambda q: math.dist(q["p"], c))
+        if math.dist(lab["p"], c) <= TASK_RADIUS:
+            by_label.setdefault(lab["n"], (lab, []))[1].extend((key, e) for e in entries)
+    removed, reps = set(), []
+    for lab, items in by_label.values():
+        ends = {k[0] for k, _ in items} | {k[-1] for k, _ in items}
+        interior = {n for k, _ in items for n in k[1:-1]} - ends
+        mids = []
+        for key, (_, (pts, run)) in items:
+            idx = [i for i, st in enumerate(run) if st["node"] in interior]
+            if not idx:
+                continue
+            a, b = run[idx[0] - 1], run[idx[-1] + 1]
+            mids.append(point_on(pts, (a["s"] + b["s"]) / 2))
+            print(f"  task {lab['n']} run {list(key)}: entrance {a['node']} exit {b['node']} merge {sorted(interior)}")
+        if mids:
+            removed |= interior
+            reps.append({"p": (sum(m[0] for m in mids) / len(mids), sum(m[1] for m in mids) / len(mids)), "pole": None, "task": lab["kind"]})
+    return [nd for i, nd in enumerate(nodes) if i not in removed] + reps
+
+
+def point_on(pts, s):
+    acc = 0.0
+    for i in range(1, len(pts)):
+        d = math.dist(pts[i - 1], pts[i])
+        if acc + d >= s:
+            t = (s - acc) / (d or 1)
+            return (pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * t, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * t)
+        acc += d
+    return pts[-1]
+
+
 def render_original(page, out_png):
     page.get_pixmap(matrix=fitz.Matrix(RENDER_SCALE, RENDER_SCALE), clip=CROP, alpha=False).save(out_png)
 
@@ -323,10 +400,14 @@ def main():
     pole_pts = [(n, (sum(p[0] for p in ps) / len(ps), sum(p[1] for p in ps) / len(ps))) for n, ps in sorted(by_n.items())]
     routes = [flatten(c["sections"]) for c in courses]
     nodes = build_nodes(routes, pole_pts, walls)
+    nodes = collapse_tasks(routes, nodes, walls, task_labels(doc[0]))
     for c, pts in zip(courses, routes):
         c["taps"] = expected_taps(pts, nodes, walls)
         print(c["id"], "taps", len(c["taps"]))
-    tap_nodes = [{"id": i, "p": [round(nd["p"][0], 1), round(nd["p"][1], 1)], "pole": nd["pole"]} for i, nd in enumerate(nodes)]
+    tap_nodes = [
+        {"id": i, "p": [round(nd["p"][0], 1), round(nd["p"][1], 1)], "pole": nd["pole"], "task": nd.get("task")}
+        for i, nd in enumerate(nodes)
+    ]
     print("tap nodes", len(tap_nodes), "poles", sum(1 for n in tap_nodes if n["pole"]))
 
     out_json = ROOT / "src" / "data" / f"{args.prefix}.json"
