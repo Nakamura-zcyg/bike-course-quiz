@@ -86,7 +86,13 @@ export function NodeDots({
   return (
     <g className="tap-nodes">
       {nodes.map((n) => (
-        <circle key={n.id} cx={n.p[0]} cy={n.p[1]} r="4.5" className={className?.(n)} />
+        <circle
+          key={n.id}
+          cx={n.p[0]}
+          cy={n.p[1]}
+          r={n.pole ? 12 : 4.5}
+          className={[n.pole ? "is-pole" : "", className?.(n) ?? ""].join(" ").trim() || undefined}
+        />
       ))}
     </g>
   );

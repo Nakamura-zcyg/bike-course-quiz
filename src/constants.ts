@@ -32,11 +32,6 @@ export const RESYNC_NEAR_FACTOR = 25;
 export const RESYNC_CONFIRM_NEAR = 3;
 export const RESYNC_CONFIRM_FAR = 40;
 
-/** タップ候補（曲がり角）の抽出 */
-export const CORNER_SIMPLIFY_EPS = 2.5;
-export const CORNER_MIN_TURN_DEG = 25;
-export const NODE_MERGE_RADIUS = 20;
-export const NODE_MATCH_RADIUS = 18;
 /** タップの当たり判定（画面上の px） */
 export const TAP_HIT_PX = 28;
 

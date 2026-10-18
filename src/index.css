@@ -403,9 +403,21 @@ button.is-active {
   stroke: var(--node-stroke);
   stroke-width: 1.5;
 }
+/* 番号ポールの交差点は、数字が隠れないよう輪で示す */
+.tap-nodes circle.is-pole {
+  fill: none;
+  stroke: var(--line-user);
+  stroke-width: 2;
+  stroke-dasharray: 3 2;
+}
 .tap-nodes circle.is-wrong {
   fill: var(--line-ng);
   stroke: var(--line-ng);
+}
+.tap-nodes circle.is-pole.is-wrong {
+  fill: none;
+  stroke-width: 3.5;
+  stroke-dasharray: none;
 }
 .section-labels circle {
   fill: var(--node-fill);

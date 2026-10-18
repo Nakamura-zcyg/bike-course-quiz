@@ -1,5 +1,5 @@
-import { buildRoute, type CourseJson, type Pt, type Route } from "../lib/geometry";
-import { buildNodes, expectedTaps, type TapNode, type TapStep } from "../lib/tap";
+import { buildRoute, sectionAt, type CourseJson, type Pt, type Route } from "../lib/geometry";
+import type { TapNode, TapStep } from "../lib/tap";
 import kogata from "./kogata.json";
 
 export interface Course {
@@ -14,16 +14,23 @@ export interface Course {
   taps: TapStep[];
 }
 
-const raw = (kogata as { courses: CourseJson[] }).courses;
-const routes = raw.map((c) => buildRoute(c.sections));
+/** タップ候補と各コースの正解手順は tools/extract_course.py が地図の壁（島の縁・縁石）を見て作る */
+interface DataJson {
+  tapNodes: TapNode[];
+  courses: (CourseJson & { taps: { node: number; s: number }[] })[];
+}
 
-/** 全コース共通のタップ候補（コース図は同じなので共有する） */
-export const tapNodes: TapNode[] = buildNodes(routes);
+const data = kogata as unknown as DataJson;
 
-export const courses: Course[] = raw.map((c, i) => ({
-  ...c,
-  image: import.meta.env.BASE_URL + c.image,
-  originalImage: import.meta.env.BASE_URL + c.originalImage,
-  route: routes[i],
-  taps: expectedTaps(routes[i], tapNodes),
-}));
+export const tapNodes: TapNode[] = data.tapNodes;
+
+export const courses: Course[] = data.courses.map((c) => {
+  const route = buildRoute(c.sections);
+  return {
+    ...c,
+    image: import.meta.env.BASE_URL + c.image,
+    originalImage: import.meta.env.BASE_URL + c.originalImage,
+    route,
+    taps: c.taps.map((t) => ({ ...t, section: sectionAt(route, Math.max(0, t.s - 1)) })),
+  };
+});
