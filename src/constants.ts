@@ -1,15 +1,21 @@
 // 座標の単位はすべてコース図の pt（PDF 座標を切り抜いたもの）
 
+/**
+ * なぞる判定の許容幅（ルートの線からの距離）。PDF の線は重なり回避で道の中心からずらして
+ * 描かれている所があるため、「同じ道（領域）の上なら正解」になるよう道幅の半分＋ずれ分を見込む。
+ */
 export const TOLERANCE_PRESETS = {
-  strict: { label: "厳しめ", value: 6 },
-  normal: { label: "標準（1車線分）", value: 10 },
-  loose: { label: "緩め", value: 15 },
+  strict: { label: "厳しめ", value: 15 },
+  normal: { label: "標準", value: 22 },
+  loose: { label: "緩め", value: 28 },
 } as const;
 export type ToleranceKey = keyof typeof TOLERANCE_PRESETS;
 export const DEFAULT_TOLERANCE: ToleranceKey = "normal";
 
 /** なぞった線をこの間隔で補間してから判定する */
 export const RESAMPLE_STEP = 2;
+/** 許容幅の外にこの長さ続けて出たら外れとする（指のぶれで 1 点だけ出たのは見逃す） */
+export const OFF_CONFIRM_LENGTH = 8;
 /** 判定窓: 現在の進み位置から前方・後方どこまでを照合対象にするか（許容幅の倍数） */
 export const LOOKAHEAD_FACTOR = 3;
 export const LOOKBACK_FACTOR = 1.5;

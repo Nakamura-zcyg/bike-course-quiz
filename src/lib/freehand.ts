@@ -1,6 +1,7 @@
 import {
   LOOKAHEAD_FACTOR,
   LOOKBACK_FACTOR,
+  OFF_CONFIRM_LENGTH,
   RESAMPLE_STEP,
   RESUME_FACTOR,
   RESYNC_CONFIRM_FAR,
@@ -26,6 +27,7 @@ export type MoveResult = { status: "ok" } | { status: "done" } | { status: "off"
 export class LiveTracker {
   s = 0;
   private last: Pt | null = null;
+  private offRun = 0;
   private readonly route: Route;
   private readonly tol: number;
 
@@ -55,9 +57,13 @@ export class LiveTracker {
     for (const q of interpolate(this.last, p, RESAMPLE_STEP)) {
       const r = project(this.route, q, this.s - back, this.s + ahead);
       if (!r || r.d > this.tol) {
+        this.offRun += RESAMPLE_STEP;
+        if (this.offRun < OFF_CONFIRM_LENGTH) continue;
+        this.offRun = 0;
         this.last = null;
         return { status: "off", at: q, section: blameSection(this.route, this.s, this.tol) };
       }
+      this.offRun = 0;
       this.s = Math.max(this.s, r.s);
       if (this.done) {
         this.last = null;
@@ -70,6 +76,7 @@ export class LiveTracker {
 
   end() {
     this.last = null;
+    this.offRun = 0;
   }
 }
 
@@ -92,6 +99,7 @@ export function evaluateFreehand(route: Route, strokes: Pt[][], tol: number): Fr
 
   let s = 0;
   let lost = false;
+  let offRun = 0;
   // 外れている間の「ここでルートに戻ったかもしれない」候補。start は戻った地点、s はそこから追跡した位置
   type Candidate = { start: number; s: number; count: number; far: boolean };
   let cand: Candidate | null = null;
@@ -111,8 +119,12 @@ export function evaluateFreehand(route: Route, strokes: Pt[][], tol: number): Fr
           const r = project(route, q, s - back, s + ahead);
           if (r && r.d <= tol) {
             s = Math.max(s, r.s);
+            offRun = 0;
             continue;
           }
+          offRun += RESAMPLE_STEP;
+          if (offRun < OFF_CONFIRM_LENGTH) continue;
+          offRun = 0;
           lost = true;
           cand = null;
           errors[blameSection(route, s, tol)] = true;
