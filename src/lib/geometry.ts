@@ -4,7 +4,6 @@ export interface CourseJson {
   id: string;
   name: string;
   image: string;
-  originalImage: string;
   width: number;
   height: number;
   sections: Pt[][];

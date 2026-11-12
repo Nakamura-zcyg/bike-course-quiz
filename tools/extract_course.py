@@ -331,10 +331,6 @@ def point_on(pts, s):
     return pts[-1]
 
 
-def render_original(page, out_png):
-    page.get_pixmap(matrix=fitz.Matrix(RENDER_SCALE, RENDER_SCALE), clip=CROP, alpha=False).save(out_png)
-
-
 def render_background(page, out_png):
     page.clean_contents()
     xref = page.get_contents()[0]
@@ -376,14 +372,12 @@ def main():
         cid = f"{args.prefix}-{pno + 1}"
         out_png = ROOT / "public" / "courses" / f"{cid}.png"
         out_png.parent.mkdir(parents=True, exist_ok=True)
-        render_original(page, str(out_png.with_name(f"{cid}-original.png")))
         w_px, h_px = render_background(page, str(out_png))
         courses.append(
             {
                 "id": cid,
                 "name": f"{args.class_name} {pno + 1}号コース",
                 "image": f"courses/{cid}.png",
-                "originalImage": f"courses/{cid}-original.png",
                 "width": round(CROP.width, 1),
                 "height": round(CROP.height, 1),
                 "sections": [[rnd(p) for p in sec] for sec in route],

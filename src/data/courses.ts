@@ -6,7 +6,6 @@ export interface Course {
   id: string;
   name: string;
   image: string;
-  originalImage: string;
   width: number;
   height: number;
   sections: Pt[][];
@@ -29,7 +28,6 @@ export const courses: Course[] = data.courses.map((c) => {
   return {
     ...c,
     image: import.meta.env.BASE_URL + c.image,
-    originalImage: import.meta.env.BASE_URL + c.originalImage,
     route,
     taps: markOptional(
       route,

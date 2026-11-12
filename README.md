@@ -34,10 +34,9 @@ python tools/extract_course.py <コース図.pdf> --prefix kogata --class-name �
 ```
 
 - `public/courses/<id>.png`: 赤線を消した背景（PDF の描画命令から赤の塗りだけ外して描画）
-- `public/courses/<id>-original.png`: 元の図（お手本の「元の図」「重ねて確認」用）
 - `src/data/<prefix>.json`: 区間ごとの座標列（pt。走行順・向き付き）、タップ候補と各コースの正解手順（壁の判定に PDF 埋め込みの地図画像を使う）
 
-別の PDF を追加したら [src/data/courses.ts](src/data/courses.ts) で読み込む。お手本画面の「重ねて確認」で、抽出した線が元の赤線に重なっているかを確認できる。
+別の PDF を追加したら [src/data/courses.ts](src/data/courses.ts) で読み込む。
 
 ## 開発
 
